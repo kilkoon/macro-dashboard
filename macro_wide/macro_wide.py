@@ -201,6 +201,39 @@ def footer() -> rx.Component:
     )
 
 
+def page_layout(title: str, icon: str, description: str) -> rx.Component:
+    """빈 페이지 레이아웃"""
+    return rx.box(
+        navbar(),
+        rx.box(
+            rx.vstack(
+                rx.box(
+                    rx.icon(icon, size=48, color="#10b981"),
+                    class_name="w-24 h-24 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6",
+                ),
+                rx.heading(
+                    title,
+                    class_name="text-3xl font-bold text-white mb-4",
+                ),
+                rx.text(
+                    description,
+                    class_name="text-gray-400 text-center max-w-md mb-8",
+                ),
+                rx.badge(
+                    "Coming Soon",
+                    class_name="bg-emerald-500/20 text-emerald-400 px-4 py-2 text-sm",
+                ),
+                align="center",
+                justify="center",
+                class_name="min-h-[60vh] pt-24",
+            ),
+            footer(),
+            class_name="max-w-7xl mx-auto px-6",
+        ),
+        class_name="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950",
+    )
+
+
 def index() -> rx.Component:
     """메인 페이지"""
     return rx.box(
@@ -216,6 +249,24 @@ def index() -> rx.Component:
     )
 
 
+def stocks_page() -> rx.Component:
+    """주식분석 페이지"""
+    return page_layout(
+        title="주식분석",
+        icon="candlestick-chart",
+        description="개별 종목 분석, 차트, 재무제표 등 상세한 주식 정보를 제공합니다.",
+    )
+
+
+def indicators_page() -> rx.Component:
+    """경제지표 페이지"""
+    return page_layout(
+        title="경제지표",
+        icon="bar-chart-3",
+        description="GDP, 금리, 물가지수 등 주요 경제 지표를 한눈에 확인하세요.",
+    )
+
+
 app = rx.App(
     theme=rx.theme(
         appearance="dark",
@@ -223,3 +274,5 @@ app = rx.App(
     ),
 )
 app.add_page(index, title="MacroWide - 글로벌 경제 대시보드")
+app.add_page(stocks_page, route="/stocks", title="MacroWide - 주식분석")
+app.add_page(indicators_page, route="/indicators", title="MacroWide - 경제지표")
