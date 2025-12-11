@@ -1,0 +1,48 @@
+# Reflex
+.states
+.web
+.reflex/
+*.db
+assets/external/
+uploaded_files/
+
+# Python
+*.py[cod]
+__pycache__/
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing & Linting
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+logs/
+
+# Misc
+*.bak
+*.tmp
