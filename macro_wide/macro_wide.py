@@ -5,7 +5,27 @@ import reflex as rx
 
 class State(rx.State):
     """앱 상태 관리"""
-    pass
+    indicators: list[dict] = []
+    last_updated: str = ""
+    loading: bool = False
+    error: str = ""
+
+    async def load_indicators(self):
+        """무료 데이터 소스에서 시장 지표를 불러옵니다(5분 TTL 캐시)."""
+        self.loading = True
+        self.error = ""
+        try:
+            from macro_wide.services.market_data import get_indicators
+
+            indicators, last_updated = get_indicators(ttl_seconds=300)
+            # Reflex state는 JSON-serializable 타입을 선호하므로 dict로 보관합니다.
+            self.indicators = list(indicators)
+            self.last_updated = last_updated
+        except Exception:
+            # 운영 시에는 로깅을 추가하는 게 좋습니다.
+            self.error = "지표 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+        finally:
+            self.loading = False
 
 
 def navbar() -> rx.Component:
@@ -75,24 +95,25 @@ def hero_section() -> rx.Component:
     )
 
 
-def indicator_card(name: str, value: str, change: str, is_positive: bool) -> rx.Component:
+def indicator_card(name: str, value: str, change: str, is_positive) -> rx.Component:
     """경제 지표 카드"""
     return rx.box(
         rx.vstack(
             rx.hstack(
                 rx.text(name, class_name="text-gray-400 text-sm font-medium"),
-                rx.icon(
-                    "trending-up" if is_positive else "trending-down",
-                    size=16,
-                    color="#10b981" if is_positive else "#ef4444",
+                rx.cond(
+                    is_positive,
+                    rx.icon("trending-up", size=16, color="#10b981"),
+                    rx.icon("trending-down", size=16, color="#ef4444"),
                 ),
                 justify="between",
                 width="100%",
             ),
             rx.text(value, class_name="text-2xl font-bold text-white"),
-            rx.text(
-                change,
-                class_name=f"text-sm font-semibold {'text-emerald-400' if is_positive else 'text-red-400'}",
+            rx.cond(
+                is_positive,
+                rx.text(change, class_name="text-sm font-semibold text-emerald-400"),
+                rx.text(change, class_name="text-sm font-semibold text-red-400"),
             ),
             align="start",
             spacing="2",
@@ -106,15 +127,58 @@ def indicators_section() -> rx.Component:
     """경제 지표 섹션"""
     return rx.box(
         rx.vstack(
-            rx.heading("실시간 시장 지표", class_name="text-2xl font-bold text-white mb-6"),
+            rx.hstack(
+                rx.heading("실시간 시장 지표", class_name="text-2xl font-bold text-white"),
+                rx.hstack(
+                    rx.cond(
+                        State.last_updated != "",
+                        rx.text(f"Updated: {State.last_updated}", class_name="text-gray-500 text-sm"),
+                        rx.text("", class_name="text-gray-500 text-sm"),
+                    ),
+                    rx.button(
+                        "새로고침",
+                        size="1",
+                        variant="ghost",
+                        class_name="text-gray-400 hover:text-white",
+                        on_click=State.load_indicators,
+                    ),
+                    spacing="3",
+                    align="center",
+                ),
+                justify="between",
+                align="center",
+                width="100%",
+                class_name="mb-6",
+            ),
+            rx.cond(
+                State.error != "",
+                rx.box(
+                    rx.text(State.error, class_name="text-red-400 text-sm"),
+                    class_name="mb-4",
+                ),
+                rx.box(),
+            ),
             rx.box(
-                indicator_card("KOSPI", "2,687.42", "+1.24%", True),
-                indicator_card("KOSDAQ", "872.15", "-0.32%", False),
-                indicator_card("S&P 500", "6,032.38", "+0.89%", True),
-                indicator_card("NASDAQ", "19,478.91", "+1.15%", True),
-                indicator_card("USD/KRW", "1,428.50", "-0.15%", False),
-                indicator_card("기준금리", "3.00%", "0.00%", True),
-                class_name="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 w-full",
+                rx.cond(
+                    State.loading,
+                    rx.box(
+                        rx.text("Loading...", class_name="text-gray-400"),
+                        class_name="py-6",
+                    ),
+                    rx.box(
+                        rx.foreach(
+                            State.indicators,
+                            lambda ind: indicator_card(
+                                ind["name"],
+                                ind["value"],
+                                ind["change"],
+                                ind["is_positive"],
+                            ),
+                        ),
+                        class_name="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 w-full",
+                    ),
+                ),
+                class_name="w-full",
             ),
             width="100%",
         ),
@@ -237,6 +301,18 @@ def page_layout(title: str, icon: str, description: str) -> rx.Component:
 def index() -> rx.Component:
     """메인 페이지"""
     return rx.box(
+        # 5분 주기로 자동 새로고침(키 없는 무료 데이터 소스의 TTL과 동일)
+        rx.script(
+            """
+(function () {
+  if (typeof window === 'undefined') return;
+  if (window.__macrowide_autorefresh) return;
+  window.__macrowide_autorefresh = setInterval(function () {
+    window.location.reload();
+  }, 300000);
+})();
+            """.strip()
+        ),
         navbar(),
         rx.box(
             hero_section(),
@@ -273,6 +349,6 @@ app = rx.App(
         accent_color="teal",
     ),
 )
-app.add_page(index, title="MacroWide - 글로벌 경제 대시보드")
+app.add_page(index, title="MacroWide - 글로벌 경제 대시보드", on_load=State.load_indicators)
 app.add_page(stocks_page, route="/stocks", title="MacroWide - 주식분석")
 app.add_page(indicators_page, route="/indicators", title="MacroWide - 경제지표")

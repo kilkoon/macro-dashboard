@@ -13,6 +13,7 @@ dependencies = [
     "reflex>=0.8.22",
     "plotly>=6.0.0",
     "pandas>=2.0.0",
+    "yfinance>=0.2.66",
 ]
 
 [project.optional-dependencies]
