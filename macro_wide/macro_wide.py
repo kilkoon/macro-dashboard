@@ -10,6 +10,49 @@ class State(rx.State):
     is_cached: bool = False
     loading: bool = False
     error: str = ""
+    stock_query: str = ""
+    selected_symbol: str = "NVDA"
+    stock_price: str = "—"
+    stock_change: str = "—"
+    stock_change_value: str = "—"
+    stock_change_pct: str = ""
+    stock_change_is_positive: bool = True
+    stock_volume: str = "—"
+    stock_market_cap: str = "—"
+    stock_last_updated: str = ""
+    stock_is_cached: bool = False
+    stock_loading: bool = False
+    stock_error: str = ""
+    stock_items: list[dict] = [
+        {"symbol": "NVDA", "name": "NVIDIA", "market": "NASDAQ"},
+        {"symbol": "IREN", "name": "Iris Energy", "market": "NASDAQ"},
+        {"symbol": "RKLB", "name": "Rocket Lab", "market": "NASDAQ"},
+    ]
+
+    def set_stock_query(self, value: str):
+        self.stock_query = value
+
+    async def set_selected_symbol(self, symbol: str):
+        self.selected_symbol = symbol
+        await self.load_stock_quote()
+
+    @rx.var
+    def filtered_stocks(self) -> list[dict]:
+        q = self.stock_query.strip().lower()
+        if not q:
+            return self.stock_items
+        return [
+            s
+            for s in self.stock_items
+            if q in str(s.get("symbol", "")).lower() or q in str(s.get("name", "")).lower()
+        ]
+
+    @rx.var
+    def selected_stock(self) -> dict:
+        for s in self.stock_items:
+            if s.get("symbol") == self.selected_symbol:
+                return s
+        return self.stock_items[0] if self.stock_items else {}
 
     async def load_indicators(self):
         """무료 데이터 소스에서 시장 지표를 불러옵니다(5분 TTL 캐시)."""
@@ -30,6 +73,32 @@ class State(rx.State):
         finally:
             self.loading = False
 
+    async def load_stock_quote(self):
+        """선택 종목의 현재가/등락/거래량/시총을 불러옵니다(5분 TTL 캐시)."""
+        self.stock_loading = True
+        self.stock_error = ""
+        try:
+            from macro_wide.services.market_data import get_stock_quote
+
+            quote, last_updated, is_cached = get_stock_quote(
+                symbol=self.selected_symbol,
+                ttl_seconds=300,
+            )
+            self.stock_price = quote.get("price", "—")
+            self.stock_change = quote.get("change", "—")
+            self.stock_change_value = quote.get("change_value", "—")
+            self.stock_change_pct = quote.get("change_pct", "")
+            self.stock_change_is_positive = bool(quote.get("is_positive", True))
+            self.stock_volume = quote.get("volume", "—")
+            self.stock_market_cap = quote.get("market_cap", "—")
+            self.stock_last_updated = last_updated
+            self.stock_is_cached = is_cached
+        except Exception:
+            self.stock_error = "종목 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+            self.stock_is_cached = False
+        finally:
+            self.stock_loading = False
+
 
 def navbar() -> rx.Component:
     """네비게이션 바"""
@@ -48,8 +117,8 @@ def navbar() -> rx.Component:
             # 네비게이션 메뉴
             rx.hstack(
                 rx.link("대시보드", href="/", class_name="text-gray-300 hover:text-emerald-400"),
-                rx.link("주식분석", href="/stocks", class_name="text-gray-300 hover:text-emerald-400"),
                 rx.link("경제지표", href="/indicators", class_name="text-gray-300 hover:text-emerald-400"),
+                rx.link("주식분석", href="/stocks", class_name="text-gray-300 hover:text-emerald-400"),
                 spacing="6",
             ),
             # 우측 버튼
@@ -126,6 +195,22 @@ def indicator_card(name: str, value: str, change: str, is_positive) -> rx.Compon
     )
 
 
+def refresh_icon_button(*, on_click, disabled: bool) -> rx.Component:
+    """'새로고침' 아이콘 버튼(텍스트 대신 이미지 사용)."""
+    return rx.button(
+        rx.image(
+            src="/refresh.svg",
+            alt="새로고침",
+            class_name="w-4 h-4 opacity-80 group-hover:opacity-100 group-hover:brightness-150",
+        ),
+        size="1",
+        variant="ghost",
+        class_name="group p-2",
+        on_click=on_click,
+        disabled=disabled,
+    )
+
+
 def indicators_section() -> rx.Component:
     """경제 지표 섹션"""
     return rx.box(
@@ -137,19 +222,18 @@ def indicators_section() -> rx.Component:
                         State.last_updated != "",
                         rx.cond(
                             State.is_cached,
-                            rx.text(f"Updated: {State.last_updated} (cached)", class_name="text-gray-500 text-sm"),
-                            rx.text(f"Updated: {State.last_updated}", class_name="text-gray-500 text-sm"),
+                            rx.text(
+                                f"Updated: {State.last_updated} (cached)",
+                                class_name="text-gray-500 text-xs",
+                            ),
+                            rx.text(
+                                f"Updated: {State.last_updated}",
+                                class_name="text-gray-500 text-xs",
+                            ),
                         ),
                         rx.text("", class_name="text-gray-500 text-sm"),
                     ),
-                    rx.button(
-                        "새로고침",
-                        size="1",
-                        variant="ghost",
-                        class_name="text-gray-400 hover:text-white",
-                        on_click=State.load_indicators,
-                        disabled=State.loading,
-                    ),
+                    refresh_icon_button(on_click=State.load_indicators, disabled=State.loading),
                     spacing="3",
                     align="center",
                 ),
@@ -306,6 +390,226 @@ def page_layout(title: str, icon: str, description: str) -> rx.Component:
     )
 
 
+def stock_list_item(stock) -> rx.Component:
+    """좌측 종목 리스트 아이템"""
+    is_selected = stock["symbol"] == State.selected_symbol
+    base = rx.hstack(
+        rx.vstack(
+            rx.text(stock["name"], class_name="text-sm font-semibold text-white"),
+            rx.hstack(
+                rx.badge(stock["symbol"], class_name="bg-slate-700/60 text-gray-200 text-xs"),
+                rx.text(stock["market"], class_name="text-xs text-gray-500"),
+                spacing="2",
+            ),
+            spacing="2",
+            align="start",
+        ),
+        justify="between",
+        align="center",
+        width="100%",
+    )
+    return rx.button(
+        base,
+        id=f"stock-{stock['symbol']}",
+        width="100%",
+        variant="ghost",
+        class_name=rx.cond(
+            is_selected,
+            # 레이아웃 고정: 동일 padding + 동일 border 두께(transparent -> emerald로만 변경)
+            "justify-start px-3 py-3 border border-emerald-500/30 bg-emerald-500/15 hover:bg-emerald-500/20 ring-1 ring-inset ring-emerald-500/20",
+            "justify-start px-3 py-3 border border-transparent hover:bg-slate-800/60",
+        ),
+        on_click=State.set_selected_symbol(stock["symbol"]),
+    )
+
+
+def stocks_layout() -> rx.Component:
+    """주식분석: 좌측 리스트 + 우측 상세"""
+    return rx.box(
+        # 5분 주기로 데이터 갱신(메인 '실시간 시장 지표'와 동일한 TTL=300s에 맞춤)
+        # - 선택 종목은 localStorage로 저장/복원하여 리로드 시에도 유지합니다.
+        rx.script(
+            """
+(function () {
+  if (typeof window === 'undefined') return;
+
+  // Store selected symbol on click.
+  if (!window.__macrowide_stock_sel_listener) {
+    window.__macrowide_stock_sel_listener = true;
+    document.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('button[id^="stock-"]') : null;
+      if (!btn || !btn.id) return;
+      var sym = btn.id.replace('stock-', '');
+      try { window.localStorage.setItem('macrowide_selected_symbol', sym); } catch (_) {}
+    }, true);
+  }
+
+  // Restore selection after mount.
+  if (!window.__macrowide_stock_sel_restore) {
+    window.__macrowide_stock_sel_restore = true;
+    setTimeout(function () {
+      var sym = null;
+      try { sym = window.localStorage.getItem('macrowide_selected_symbol'); } catch (_) {}
+      if (!sym) return;
+      var btn = document.getElementById('stock-' + sym);
+      if (btn) btn.click();
+    }, 100);
+  }
+
+  // Auto refresh every 5 minutes.
+  if (window.__macrowide_stocks_autorefresh) return;
+  window.__macrowide_stocks_autorefresh = setInterval(function () {
+    window.location.reload();
+  }, 300000);
+})();
+            """.strip()
+        ),
+        navbar(),
+        rx.box(
+            rx.box(
+                rx.heading("주식분석", class_name="text-2xl font-bold text-white"),
+                rx.text(
+                    "좌측에서 종목을 선택하면 우측에서 상세 내용을 확인할 수 있습니다.",
+                    class_name="text-gray-400 text-sm",
+                ),
+                class_name="pt-24 mb-6",
+            ),
+            rx.box(
+                # Sidebar (mobile: top, desktop: left)
+                rx.box(
+                    rx.vstack(
+                        rx.input(
+                            placeholder="Search (symbol or name)",
+                            value=State.stock_query,
+                            on_change=State.set_stock_query,
+                            class_name="bg-slate-900/60 border border-slate-700/60 text-gray-200 placeholder:text-gray-500",
+                        ),
+                        rx.box(
+                            rx.foreach(State.filtered_stocks, stock_list_item),
+                            class_name="w-full flex flex-col gap-2 overflow-auto max-h-64 md:max-h-[70vh] pr-1",
+                        ),
+                        spacing="3",
+                        width="100%",
+                    ),
+                    class_name="w-full md:w-65 md:min-w-65 bg-slate-800/30 border border-slate-700/50 rounded-xl p-4",
+                ),
+                # Detail pane
+                rx.box(
+                    rx.vstack(
+                        rx.hstack(
+                            rx.heading(State.selected_stock["name"], class_name="text-xl font-bold text-white"),
+                            rx.badge(
+                                State.selected_stock["symbol"],
+                                class_name="bg-emerald-500/20 text-emerald-300",
+                            ),
+                            rx.badge(
+                                State.selected_stock["market"],
+                                class_name="bg-slate-700/50 text-gray-300",
+                            ),
+                            spacing="2",
+                            align="center",
+                            flex_wrap="wrap",
+                        ),
+                        rx.text(
+                            "여기에 종목 개요, 현재가/등락, 차트, 주요 재무 지표 등을 순차적으로 추가할 예정입니다.",
+                            class_name="text-gray-400 text-sm",
+                        ),
+                        rx.hstack(
+                            rx.cond(
+                                State.stock_last_updated != "",
+                                rx.cond(
+                                    State.stock_is_cached,
+                                    rx.text(
+                                        f"Updated: {State.stock_last_updated} (cached)",
+                                        class_name="text-gray-500 text-xs",
+                                    ),
+                                    rx.text(
+                                        f"Updated: {State.stock_last_updated}",
+                                        class_name="text-gray-500 text-xs",
+                                    ),
+                                ),
+                                rx.text("", class_name="text-gray-500 text-sm"),
+                            ),
+                            refresh_icon_button(on_click=State.load_stock_quote, disabled=State.stock_loading),
+                            spacing="3",
+                            align="center",
+                            width="100%",
+                            class_name="mt-1",
+                            justify="end",
+                        ),
+                        rx.cond(
+                            State.stock_error != "",
+                            rx.box(
+                                rx.text(State.stock_error, class_name="text-red-400 text-sm"),
+                                class_name="mt-2",
+                            ),
+                            rx.box(),
+                        ),
+                        rx.box(
+                            rx.hstack(
+                                rx.box(
+                                    rx.text("현재가", class_name="text-xs text-gray-500"),
+                                    rx.text(State.stock_price, class_name="text-lg font-semibold text-white"),
+                                    class_name="flex-1 bg-slate-900/40 border border-slate-700/50 rounded-lg p-4",
+                                ),
+                                rx.box(
+                                    rx.text("등락", class_name="text-xs text-gray-500"),
+                                    rx.hstack(
+                                        rx.text(
+                                            State.stock_change_value,
+                                            class_name="text-lg font-semibold text-white whitespace-nowrap",
+                                        ),
+                                        rx.cond(
+                                            State.stock_change_pct != "",
+                                            rx.text(
+                                                State.stock_change_pct,
+                                                class_name="text-sm font-semibold text-white/70 whitespace-nowrap",
+                                            ),
+                                            rx.box(),
+                                        ),
+                                        spacing="2",
+                                        class_name="items-baseline flex-nowrap",
+                                    ),
+                                    class_name="flex-1 bg-slate-900/40 border border-slate-700/50 rounded-lg p-4",
+                                ),
+                                rx.box(
+                                    rx.text("거래량", class_name="text-xs text-gray-500"),
+                                    rx.text(State.stock_volume, class_name="text-lg font-semibold text-white"),
+                                    class_name="flex-1 bg-slate-900/40 border border-slate-700/50 rounded-lg p-4",
+                                ),
+                                rx.box(
+                                    rx.text("시총", class_name="text-xs text-gray-500"),
+                                    rx.text(State.stock_market_cap, class_name="text-lg font-semibold text-white"),
+                                    class_name="flex-1 bg-slate-900/40 border border-slate-700/50 rounded-lg p-4",
+                                ),
+                                spacing="4",
+                                width="100%",
+                                class_name="flex-col md:flex-row",
+                            ),
+                            width="100%",
+                        ),
+                        rx.box(
+                            rx.badge(
+                                "Coming Soon",
+                                class_name="bg-emerald-500/20 text-emerald-400 px-3 py-1 text-sm",
+                            ),
+                            class_name="mt-2",
+                        ),
+                        spacing="4",
+                        align="start",
+                        width="100%",
+                    ),
+                    class_name="flex-1 bg-slate-800/30 border border-slate-700/50 rounded-xl p-6",
+                ),
+                class_name="flex flex-col md:flex-row gap-6",
+            ),
+            footer(),
+            class_name="max-w-7xl mx-auto px-6",
+        ),
+        class_name="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950",
+    )
+
+
 def index() -> rx.Component:
     """메인 페이지"""
     return rx.box(
@@ -335,11 +639,7 @@ def index() -> rx.Component:
 
 def stocks_page() -> rx.Component:
     """주식분석 페이지"""
-    return page_layout(
-        title="주식분석",
-        icon="candlestick-chart",
-        description="개별 종목 분석, 차트, 재무제표 등 상세한 주식 정보를 제공합니다.",
-    )
+    return stocks_layout()
 
 
 def indicators_page() -> rx.Component:
@@ -358,5 +658,5 @@ app = rx.App(
     ),
 )
 app.add_page(index, title="MacroWide - 글로벌 경제 대시보드", on_load=State.load_indicators)
-app.add_page(stocks_page, route="/stocks", title="MacroWide - 주식분석")
+app.add_page(stocks_page, route="/stocks", title="MacroWide - 주식분석", on_load=State.load_stock_quote)
 app.add_page(indicators_page, route="/indicators", title="MacroWide - 경제지표")

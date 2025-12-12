@@ -33,6 +33,29 @@ class _Cache:
 _CACHE: _Cache | None = None
 
 
+class StockQuote(TypedDict):
+    price: str
+    change: str
+    # Split fields for UI (optional but always provided when data is available)
+    change_value: str
+    change_pct: str
+    is_positive: bool
+    volume: str
+    market_cap: str
+    source: str
+
+
+@dataclass(frozen=True)
+class _StockCache:
+    fetched_at_epoch: float
+    symbol: str
+    quote: StockQuote
+    last_updated: str
+
+
+_STOCK_CACHE: _StockCache | None = None
+
+
 def _fmt_number(x: float, decimals: int = 2) -> str:
     return f"{x:,.{decimals}f}"
 
@@ -40,6 +63,21 @@ def _fmt_number(x: float, decimals: int = 2) -> str:
 def _fmt_pct(x: float, decimals: int = 2) -> str:
     sign = "+" if x >= 0 else ""
     return f"{sign}{x:.{decimals}f}%"
+
+
+def _fmt_compact_money(value: float, currency: str | None = None) -> str:
+    """Format large numbers into compact K/M/B/T format with optional currency prefix."""
+    prefix = "$" if (currency or "").upper() == "USD" else ""
+    abs_v = abs(value)
+    if abs_v >= 1_000_000_000_000:
+        return f"{prefix}{value/1_000_000_000_000:.2f}T"
+    if abs_v >= 1_000_000_000:
+        return f"{prefix}{value/1_000_000_000:.2f}B"
+    if abs_v >= 1_000_000:
+        return f"{prefix}{value/1_000_000:.2f}M"
+    if abs_v >= 1_000:
+        return f"{prefix}{value/1_000:.2f}K"
+    return f"{prefix}{_fmt_number(value, decimals=0)}"
 
 
 def _fetch_effr() -> tuple[float, str]:
@@ -100,6 +138,35 @@ def _fetch_yfinance_quotes(symbols: list[str]) -> dict[str, dict[str, float]]:
     if len(close) >= 2:
         out[symbols[0]] = {"last": float(close.iloc[-1]), "prev": float(close.iloc[-2])}
     return out
+
+
+def _fetch_yfinance_stock_quote(symbol: str) -> tuple[dict[str, Any], str]:
+    """Fetch a single stock quote via yfinance fast_info/info.
+
+    Returns:
+        (quote_payload, source_name)
+    """
+    import yfinance as yf  # type: ignore
+
+    t = yf.Ticker(symbol)
+
+    # Prefer fast_info when available (lighter + faster).
+    try:
+        fi = getattr(t, "fast_info", None)
+        if fi:
+            return dict(fi), "yfinance.fast_info"
+    except Exception:
+        pass
+
+    # Fallback to info.
+    try:
+        info = getattr(t, "info", None) or {}
+        if info:
+            return dict(info), "yfinance.info"
+    except Exception:
+        pass
+
+    return {}, "yfinance"
 
 
 def get_indicators(*, ttl_seconds: int = 300) -> tuple[list[Indicator], str, bool]:
@@ -184,3 +251,98 @@ def get_indicators(*, ttl_seconds: int = 300) -> tuple[list[Indicator], str, boo
     return indicators, last_updated, False
 
 
+def get_stock_quote(*, symbol: str, ttl_seconds: int = 300) -> tuple[StockQuote, str, bool]:
+    """Get a single stock quote with a simple in-memory TTL cache.
+
+    Args:
+        symbol: e.g. "NVDA"
+        ttl_seconds: Cache TTL. Default 300s = 5 minutes.
+
+    Returns:
+        (quote, last_updated_str, is_cached)
+    """
+    global _STOCK_CACHE
+
+    now = datetime.now(ZoneInfo("Asia/Seoul"))
+    now_epoch = now.timestamp()
+    symbol_u = symbol.strip().upper()
+
+    if (
+        _STOCK_CACHE is not None
+        and _STOCK_CACHE.symbol == symbol_u
+        and (now_epoch - _STOCK_CACHE.fetched_at_epoch) < ttl_seconds
+    ):
+        return _STOCK_CACHE.quote, _STOCK_CACHE.last_updated, True
+
+    payload, source = _fetch_yfinance_stock_quote(symbol_u)
+
+    # Try to normalize fields across fast_info/info.
+    currency = payload.get("currency")
+
+    last = (
+        payload.get("last_price")
+        or payload.get("lastPrice")
+        or payload.get("regularMarketPrice")
+        or payload.get("currentPrice")
+    )
+    prev = (
+        payload.get("previous_close")
+        or payload.get("previousClose")
+        or payload.get("regularMarketPreviousClose")
+    )
+    volume = (
+        payload.get("last_volume")
+        or payload.get("lastVolume")
+        or payload.get("regularMarketVolume")
+        or payload.get("volume")
+    )
+    market_cap = payload.get("market_cap") or payload.get("marketCap")
+
+    if last is None or prev is None:
+        quote: StockQuote = {
+            "price": "—",
+            "change": "—",
+            "change_value": "—",
+            "change_pct": "",
+            "is_positive": True,
+            "volume": "—",
+            "market_cap": "—",
+            "source": source,
+        }
+    else:
+        last_f = float(last)
+        prev_f = float(prev) if prev else 0.0
+        chg = last_f - prev_f
+        pct = ((last_f - prev_f) / prev_f) * 100.0 if prev_f else 0.0
+
+        money_prefix = "$" if (currency or "").upper() == "USD" else ""
+        price_str = f"{money_prefix}{_fmt_number(last_f, decimals=2)}"
+        # e.g. "+3.21" and "(+7.36%)"
+        change_value = _fmt_number(chg, decimals=2)
+        if chg >= 0:
+            change_value = f"+{change_value}"
+        change_pct = f"({_fmt_pct(pct, decimals=2)})"
+        change_str = f"{change_value} {change_pct}"
+
+        volume_str = "—" if volume is None else f"{int(float(volume)):,}"
+        mcap_str = "—" if market_cap is None else _fmt_compact_money(float(market_cap), currency)
+
+        quote = {
+            "price": price_str,
+            "change": change_str,
+            "change_value": change_value,
+            "change_pct": change_pct,
+            "is_positive": pct >= 0,
+            "volume": volume_str,
+            "market_cap": mcap_str,
+            "source": source,
+        }
+
+    last_updated = now.strftime("%Y-%m-%d %H:%M KST")
+    _STOCK_CACHE = _StockCache(
+        fetched_at_epoch=now_epoch,
+        symbol=symbol_u,
+        quote=quote,
+        last_updated=last_updated,
+    )
+    return quote, last_updated, False
