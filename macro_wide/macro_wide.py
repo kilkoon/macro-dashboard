@@ -7,6 +7,7 @@ class State(rx.State):
     """앱 상태 관리"""
     indicators: list[dict] = []
     last_updated: str = ""
+    is_cached: bool = False
     loading: bool = False
     error: str = ""
 
@@ -17,13 +18,15 @@ class State(rx.State):
         try:
             from macro_wide.services.market_data import get_indicators
 
-            indicators, last_updated = get_indicators(ttl_seconds=300)
+            indicators, last_updated, is_cached = get_indicators(ttl_seconds=300)
             # Reflex state는 JSON-serializable 타입을 선호하므로 dict로 보관합니다.
             self.indicators = list(indicators)
             self.last_updated = last_updated
+            self.is_cached = is_cached
         except Exception:
             # 운영 시에는 로깅을 추가하는 게 좋습니다.
             self.error = "지표 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+            self.is_cached = False
         finally:
             self.loading = False
 
@@ -132,7 +135,11 @@ def indicators_section() -> rx.Component:
                 rx.hstack(
                     rx.cond(
                         State.last_updated != "",
-                        rx.text(f"Updated: {State.last_updated}", class_name="text-gray-500 text-sm"),
+                        rx.cond(
+                            State.is_cached,
+                            rx.text(f"Updated: {State.last_updated} (cached)", class_name="text-gray-500 text-sm"),
+                            rx.text(f"Updated: {State.last_updated}", class_name="text-gray-500 text-sm"),
+                        ),
                         rx.text("", class_name="text-gray-500 text-sm"),
                     ),
                     rx.button(
@@ -141,6 +148,7 @@ def indicators_section() -> rx.Component:
                         variant="ghost",
                         class_name="text-gray-400 hover:text-white",
                         on_click=State.load_indicators,
+                        disabled=State.loading,
                     ),
                     spacing="3",
                     align="center",

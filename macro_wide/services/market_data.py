@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Any, TypedDict
 
 import httpx
@@ -101,22 +102,24 @@ def _fetch_yfinance_quotes(symbols: list[str]) -> dict[str, dict[str, float]]:
     return out
 
 
-def get_indicators(*, ttl_seconds: int = 300) -> tuple[list[Indicator], str]:
+def get_indicators(*, ttl_seconds: int = 300) -> tuple[list[Indicator], str, bool]:
     """Get indicators with a simple in-memory TTL cache.
 
     Args:
         ttl_seconds: Cache TTL. Default 300s = 5 minutes.
 
     Returns:
-        (indicators, last_updated_str)
+        (indicators, last_updated_str, is_cached)
     """
     global _CACHE
 
-    now = datetime.now()
+    # NOTE: Reflex Cloud 런타임은 UTC로 동작하는 경우가 많아,
+    # 사용자에게 익숙한 KST(Asia/Seoul)로 Updated 시간을 고정 표시합니다.
+    now = datetime.now(ZoneInfo("Asia/Seoul"))
     now_epoch = now.timestamp()
 
     if _CACHE is not None and (now_epoch - _CACHE.fetched_at_epoch) < ttl_seconds:
-        return _CACHE.indicators, _CACHE.last_updated
+        return _CACHE.indicators, _CACHE.last_updated, True
 
     # Define the set in one place to make future provider swaps easy.
     y_symbols = {
@@ -172,12 +175,12 @@ def get_indicators(*, ttl_seconds: int = 300) -> tuple[list[Indicator], str]:
         },
     ]
 
-    last_updated = now.strftime("%Y-%m-%d %H:%M")
+    last_updated = now.strftime("%Y-%m-%d %H:%M KST")
     _CACHE = _Cache(
         fetched_at_epoch=now_epoch,
         indicators=indicators,
         last_updated=last_updated,
     )
-    return indicators, last_updated
+    return indicators, last_updated, False
 
 
