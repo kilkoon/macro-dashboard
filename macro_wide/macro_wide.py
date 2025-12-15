@@ -300,38 +300,106 @@ def navbar() -> rx.Component:
 
 
 def hero_section() -> rx.Component:
-    """히어로 섹션"""
+    """Hero Section - The Investment Engine with 3 Concentric Rings"""
     return rx.box(
-        rx.vstack(
-            rx.text(
-                "MACRO WIDE",
-                class_name="text-sm font-semibold tracking-widest text-emerald-400 mb-4",
-            ),
-            rx.heading(
-                "글로벌 경제를 한눈에 파악하세요",
-                class_name="text-4xl md:text-5xl font-bold text-white leading-tight mb-6",
-            ),
-            rx.text(
-                "실시간 주식 데이터, 경제 지표, 시장 분석을 통해 더 나은 투자 결정을 내리세요.",
-                class_name="text-lg text-gray-400 max-w-xl mb-8",
-            ),
-            rx.hstack(
-                rx.button(
-                    "대시보드 시작하기",
-                    rx.icon("arrow-right", size=18),
-                    class_name="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-lg font-semibold",
-                ),
-                rx.button(
-                    "더 알아보기",
-                    variant="outline",
-                    class_name="border-slate-600 text-gray-300 hover:bg-slate-800 px-6 py-3 rounded-lg",
-                ),
-                spacing="4",
-            ),
-            align="start",
-            class_name="max-w-2xl",
+        # CSS 애니메이션 정의
+        rx.html(
+            """
+            <style>
+            @keyframes rotate-slow {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            @keyframes rotate-reverse {
+                from { transform: rotate(360deg); }
+                to { transform: rotate(0deg); }
+            }
+            @keyframes pulse-glow {
+                0%, 100% { opacity: 0.4; transform: scale(1); }
+                50% { opacity: 0.8; transform: scale(1.02); }
+            }
+            @keyframes float-up {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-15px); }
+            }
+            .ring-outer {
+                animation: rotate-slow 60s linear infinite;
+            }
+            .ring-middle {
+                animation: rotate-reverse 45s linear infinite;
+            }
+            .ring-inner {
+                animation: rotate-slow 30s linear infinite;
+            }
+            .pulse-ring {
+                animation: pulse-glow 4s ease-in-out infinite;
+            }
+            .float-element {
+                animation: float-up 6s ease-in-out infinite;
+            }
+            </style>
+            """
         ),
-        class_name="min-h-[70vh] flex items-center pt-24 pb-12",
+        rx.vstack(
+            # 3개의 동심원 (Concentric Rings)
+            rx.box(
+                # 외부 링 - MACRO
+                rx.box(
+                    class_name="absolute w-80 h-80 md:w-96 md:h-96 rounded-full border-2 border-dashed border-cyan-500/30 ring-outer top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+                ),
+                # 중간 링 - SECTOR  
+                rx.box(
+                    class_name="absolute w-56 h-56 md:w-72 md:h-72 rounded-full border-2 border-purple-500/40 ring-middle top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+                ),
+                # 내부 링 - STOCK
+                rx.box(
+                    class_name="absolute w-32 h-32 md:w-48 md:h-48 rounded-full border-2 border-amber-400/50 ring-inner top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+                ),
+                # 중앙 코어
+                rx.box(
+                    rx.icon("diamond", size=32, color="#fbbf24"),
+                    class_name="absolute w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-400/50 flex items-center justify-center pulse-ring top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+                ),
+                # 링 라벨들
+                rx.text("MACRO", class_name="absolute -top-2 left-1/2 -translate-x-1/2 text-xs font-bold tracking-widest text-cyan-400/70"),
+                rx.text("SECTOR", class_name="absolute top-12 md:top-16 left-1/2 -translate-x-1/2 text-xs font-bold tracking-widest text-purple-400/70"),
+                rx.text("STOCK", class_name="absolute top-24 md:top-28 left-1/2 -translate-x-1/2 text-xs font-bold tracking-widest text-amber-400/70"),
+                class_name="relative w-80 h-80 md:w-96 md:h-96 flex items-center justify-center mt-24 mb-12 float-element",
+            ),
+            # 메인 카피
+            rx.heading(
+                "Navigating Chaos with Logic",
+                class_name="text-4xl md:text-5xl lg:text-6xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-amber-400 leading-tight mb-4",
+            ),
+            rx.text(
+                "혼돈 속에서 논리로 길을 찾다",
+                class_name="text-lg md:text-xl text-gray-400 mb-6",
+            ),
+            # 서브 카피
+            rx.hstack(
+                rx.text("Macro Driven", class_name="text-sm font-semibold text-cyan-400"),
+                rx.text("•", class_name="text-gray-600"),
+                rx.text("Sector Focused", class_name="text-sm font-semibold text-purple-400"),
+                rx.text("•", class_name="text-gray-600"),
+                rx.text("Alpha Selected", class_name="text-sm font-semibold text-amber-400"),
+                spacing="3",
+                class_name="mb-12",
+            ),
+            # 스크롤 안내
+            rx.link(
+                rx.vstack(
+                    rx.text("SCROLL TO EXPLORE", class_name="text-xs tracking-widest text-gray-500"),
+                    rx.icon("chevrons-down", size=24, color="#6b7280", class_name="animate-bounce"),
+                    spacing="2",
+                    align="center",
+                ),
+                href="#stage-1",
+            ),
+            align="center",
+            justify="center",
+            class_name="relative z-10",
+        ),
+        class_name="min-h-screen flex items-center justify-center relative overflow-hidden",
     )
 
 
@@ -379,8 +447,448 @@ def refresh_icon_button(*, on_click, disabled: bool) -> rx.Component:
     )
 
 
+def stage_macro() -> rx.Component:
+    """Stage 1: Macro Analysis - Market Regime Identification"""
+    return rx.box(
+        # CSS 애니메이션
+        rx.html(
+            """
+            <style>
+            @keyframes radar-sweep {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            @keyframes signal-ping {
+                0% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.5); opacity: 0.5; }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes fade-in-out {
+                0%, 100% { opacity: 0; transform: translateY(10px); }
+                15%, 85% { opacity: 1; transform: translateY(0); }
+            }
+            .radar-sweep {
+                animation: radar-sweep 4s linear infinite;
+                transform-origin: bottom center;
+            }
+            .signal-dot {
+                animation: signal-ping 2s ease-in-out infinite;
+            }
+            .keyword-1 { animation: fade-in-out 6s ease-in-out infinite; animation-delay: 0s; }
+            .keyword-2 { animation: fade-in-out 6s ease-in-out infinite; animation-delay: 2s; }
+            .keyword-3 { animation: fade-in-out 6s ease-in-out infinite; animation-delay: 4s; }
+            </style>
+            """
+        ),
+        rx.vstack(
+            # 스테이지 번호
+            rx.hstack(
+                rx.box(
+                    rx.text("01", class_name="text-4xl font-black text-cyan-400/30"),
+                    class_name="mr-4",
+                ),
+                rx.vstack(
+                    rx.text("STAGE 1", class_name="text-xs font-bold tracking-widest text-cyan-400"),
+                    rx.heading("Market Regime Identification", class_name="text-2xl md:text-3xl font-bold text-white"),
+                    rx.text("시장의 국면을 파악하다", class_name="text-gray-400"),
+                    spacing="1",
+                    align="start",
+                ),
+                align="center",
+            ),
+            # 철학 설명
+            rx.box(
+                rx.text(
+                    "모든 투자의 시작은 '지금이 엑셀을 밟을 때인가, 브레이크를 밟을 때인가'를 아는 것입니다. 유동성, 금리, 정책을 분석하여 시장의 계절을 읽습니다.",
+                    class_name="text-lg text-gray-300 leading-relaxed italic",
+                ),
+                class_name="max-w-2xl mt-8 pl-6 border-l-4 border-cyan-500/50",
+            ),
+            # 레이더 시각화
+            rx.box(
+                rx.hstack(
+                    # 레이더 스캔 UI
+                    rx.box(
+                        # 레이더 배경 원들
+                        rx.box(class_name="absolute w-64 h-64 rounded-full border border-cyan-500/20"),
+                        rx.box(class_name="absolute w-48 h-48 rounded-full border border-cyan-500/20"),
+                        rx.box(class_name="absolute w-32 h-32 rounded-full border border-cyan-500/20"),
+                        rx.box(class_name="absolute w-16 h-16 rounded-full border border-cyan-500/30"),
+                        # 레이더 스윕 라인
+                        rx.box(
+                            rx.box(
+                                class_name="w-1 h-32 bg-gradient-to-t from-cyan-400 to-transparent",
+                            ),
+                            class_name="absolute bottom-1/2 left-1/2 -translate-x-1/2 radar-sweep",
+                        ),
+                        # 신호 점들
+                        rx.box(class_name="absolute w-3 h-3 rounded-full bg-cyan-400 signal-dot top-8 left-20"),
+                        rx.box(class_name="absolute w-2 h-2 rounded-full bg-cyan-300 signal-dot top-16 right-12"),
+                        rx.box(class_name="absolute w-2 h-2 rounded-full bg-cyan-400 signal-dot bottom-20 left-16"),
+                        rx.box(class_name="absolute w-3 h-3 rounded-full bg-emerald-400 signal-dot bottom-12 right-20"),
+                        class_name="relative w-64 h-64 rounded-full bg-slate-900/80 border border-cyan-500/30 flex items-center justify-center",
+                    ),
+                    # 감지된 키워드들
+                    rx.vstack(
+                        rx.box(
+                            rx.hstack(
+                                rx.box(class_name="w-2 h-2 rounded-full bg-cyan-400"),
+                                rx.text("Liquidity Cycle", class_name="text-sm font-mono text-cyan-400"),
+                                spacing="2",
+                                align="center",
+                            ),
+                            class_name="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg keyword-1",
+                        ),
+                        rx.box(
+                            rx.hstack(
+                                rx.box(class_name="w-2 h-2 rounded-full bg-purple-400"),
+                                rx.text("Interest Rate Regime", class_name="text-sm font-mono text-purple-400"),
+                                spacing="2",
+                                align="center",
+                            ),
+                            class_name="px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-lg keyword-2",
+                        ),
+                        rx.box(
+                            rx.hstack(
+                                rx.box(class_name="w-2 h-2 rounded-full bg-emerald-400"),
+                                rx.text("Fiscal Policy", class_name="text-sm font-mono text-emerald-400"),
+                                spacing="2",
+                                align="center",
+                            ),
+                            class_name="px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg keyword-3",
+                        ),
+                        spacing="4",
+                        align="start",
+                    ),
+                    spacing="8",
+                    align="center",
+                    class_name="flex-col md:flex-row",
+                ),
+                class_name="mt-12 flex justify-center",
+            ),
+            # 핵심 메시지
+            rx.box(
+                rx.text(
+                    "\"We don't fight the Fed.\"",
+                    class_name="text-xl md:text-2xl font-bold text-gray-500 italic",
+                ),
+                class_name="mt-12 text-center",
+            ),
+            align="start",
+            width="100%",
+        ),
+        id="stage-1",
+        class_name="min-h-screen flex items-center py-24",
+    )
+
+
+def stage_sector() -> rx.Component:
+    """Stage 2: Sector Filtering - Structural Growth Screening"""
+    return rx.box(
+        # CSS 애니메이션
+        rx.html(
+            """
+            <style>
+            @keyframes fall-down {
+                0% { transform: translateY(-100px); opacity: 0; }
+                20% { opacity: 1; }
+                80% { opacity: 1; }
+                100% { transform: translateY(200px); opacity: 0; }
+            }
+            @keyframes glow-pulse {
+                0%, 100% { box-shadow: 0 0 5px rgba(52, 211, 153, 0.3); }
+                50% { box-shadow: 0 0 20px rgba(52, 211, 153, 0.6); }
+            }
+            .particle-fall {
+                animation: fall-down 4s ease-in-out infinite;
+            }
+            .particle-1 { animation-delay: 0s; }
+            .particle-2 { animation-delay: 0.5s; }
+            .particle-3 { animation-delay: 1s; }
+            .particle-4 { animation-delay: 1.5s; }
+            .particle-5 { animation-delay: 2s; }
+            .particle-6 { animation-delay: 2.5s; }
+            .particle-7 { animation-delay: 3s; }
+            .particle-8 { animation-delay: 3.5s; }
+            .survivor-glow {
+                animation: glow-pulse 2s ease-in-out infinite;
+            }
+            </style>
+            """
+        ),
+        rx.vstack(
+            # 스테이지 번호
+            rx.hstack(
+                rx.box(
+                    rx.text("02", class_name="text-4xl font-black text-purple-400/30"),
+                    class_name="mr-4",
+                ),
+                rx.vstack(
+                    rx.text("STAGE 2", class_name="text-xs font-bold tracking-widest text-purple-400"),
+                    rx.heading("Structural Growth Screening", class_name="text-2xl md:text-3xl font-bold text-white"),
+                    rx.text("구조적 성장을 찾다", class_name="text-gray-400"),
+                    spacing="1",
+                    align="start",
+                ),
+                align="center",
+            ),
+            # 철학 설명
+            rx.box(
+                rx.text(
+                    "순풍이 부는 곳에 배를 띄웁니다. 단기 유행이 아닌, 기술적 혁신과 시대적 요구가 만나는 '구조적 성장(Structural Growth)' 산업군만을 걸러냅니다.",
+                    class_name="text-lg text-gray-300 leading-relaxed italic",
+                ),
+                class_name="max-w-2xl mt-8 pl-6 border-l-4 border-purple-500/50",
+            ),
+            # 필터 시각화
+            rx.box(
+                rx.vstack(
+                    # 떨어지는 점들 (전체 산업)
+                    rx.box(
+                        # 회색 점들 (걸러지는 것들)
+                        rx.box(class_name="absolute w-2 h-2 rounded-full bg-gray-600 particle-fall particle-1 left-[10%]"),
+                        rx.box(class_name="absolute w-2 h-2 rounded-full bg-gray-600 particle-fall particle-2 left-[25%]"),
+                        rx.box(class_name="absolute w-2 h-2 rounded-full bg-gray-600 particle-fall particle-3 left-[40%]"),
+                        rx.box(class_name="absolute w-2 h-2 rounded-full bg-gray-600 particle-fall particle-4 left-[55%]"),
+                        rx.box(class_name="absolute w-2 h-2 rounded-full bg-gray-600 particle-fall particle-5 left-[70%]"),
+                        rx.box(class_name="absolute w-2 h-2 rounded-full bg-gray-600 particle-fall particle-6 left-[85%]"),
+                        # 빛나는 점들 (살아남는 것들)
+                        rx.box(class_name="absolute w-3 h-3 rounded-full bg-emerald-400 particle-fall particle-7 left-[35%] survivor-glow"),
+                        rx.box(class_name="absolute w-3 h-3 rounded-full bg-emerald-400 particle-fall particle-8 left-[65%] survivor-glow"),
+                        class_name="relative w-full h-40 overflow-hidden",
+                    ),
+                    # 필터 라인
+                    rx.box(
+                        rx.hstack(
+                            rx.text("━━━━━━━━", class_name="text-purple-500/50"),
+                            rx.text("▼ FILTER ▼", class_name="text-xs font-bold text-purple-400 px-4"),
+                            rx.text("━━━━━━━━", class_name="text-purple-500/50"),
+                            align="center",
+                            justify="center",
+                            width="100%",
+                        ),
+                        class_name="w-full py-4 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent",
+                    ),
+                    # 필터 기준 태그들
+                    rx.hstack(
+                        rx.box(
+                            rx.text("CAGR > 15%", class_name="text-xs font-mono text-emerald-400"),
+                            class_name="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full",
+                        ),
+                        rx.box(
+                            rx.text("Gov Support", class_name="text-xs font-mono text-blue-400"),
+                            class_name="px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded-full",
+                        ),
+                        rx.box(
+                            rx.text("Tech Innovation", class_name="text-xs font-mono text-purple-400"),
+                            class_name="px-3 py-1 bg-purple-500/10 border border-purple-500/30 rounded-full",
+                        ),
+                        rx.box(
+                            rx.text("Scalability", class_name="text-xs font-mono text-orange-400"),
+                            class_name="px-3 py-1 bg-orange-500/10 border border-orange-500/30 rounded-full",
+                        ),
+                        spacing="3",
+                        justify="center",
+                        class_name="flex-wrap",
+                    ),
+                    # 살아남은 클러스터
+                    rx.box(
+                        rx.hstack(
+                            rx.box(
+                                rx.vstack(
+                                    rx.icon("rocket", size=24, color="#22d3ee"),
+                                    rx.text("Space", class_name="text-xs font-bold text-cyan-400"),
+                                    spacing="1",
+                                    align="center",
+                                ),
+                                class_name="w-16 h-16 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-center justify-center survivor-glow",
+                            ),
+                            rx.box(
+                                rx.vstack(
+                                    rx.icon("cpu", size=24, color="#a855f7"),
+                                    rx.text("AI Infra", class_name="text-xs font-bold text-purple-400"),
+                                    spacing="1",
+                                    align="center",
+                                ),
+                                class_name="w-16 h-16 bg-purple-500/10 border border-purple-500/30 rounded-xl flex items-center justify-center survivor-glow",
+                            ),
+                            rx.box(
+                                rx.vstack(
+                                    rx.icon("shield", size=24, color="#f97316"),
+                                    rx.text("Defense", class_name="text-xs font-bold text-orange-400"),
+                                    spacing="1",
+                                    align="center",
+                                ),
+                                class_name="w-16 h-16 bg-orange-500/10 border border-orange-500/30 rounded-xl flex items-center justify-center survivor-glow",
+                            ),
+                            spacing="6",
+                            justify="center",
+                        ),
+                        class_name="mt-8",
+                    ),
+                    align="center",
+                    width="100%",
+                ),
+                class_name="mt-12 w-full max-w-xl mx-auto",
+            ),
+            align="start",
+            width="100%",
+        ),
+        id="stage-2",
+        class_name="min-h-screen flex items-center py-24",
+    )
+
+
+def stage_stock() -> rx.Component:
+    """Stage 3: Stock Selection - The Alpha Convergence"""
+    return rx.box(
+        # CSS 애니메이션
+        rx.html(
+            """
+            <style>
+            @keyframes circle-converge {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(0.9); }
+            }
+            @keyframes diamond-shine {
+                0%, 100% { filter: brightness(1) drop-shadow(0 0 10px rgba(251, 191, 36, 0.3)); }
+                50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(251, 191, 36, 0.8)); }
+            }
+            .circle-converge {
+                animation: circle-converge 3s ease-in-out infinite;
+            }
+            .diamond-shine {
+                animation: diamond-shine 2s ease-in-out infinite;
+            }
+            </style>
+            """
+        ),
+        rx.vstack(
+            # 스테이지 번호
+            rx.hstack(
+                rx.box(
+                    rx.text("03", class_name="text-4xl font-black text-amber-400/30"),
+                    class_name="mr-4",
+                ),
+                rx.vstack(
+                    rx.text("STAGE 3", class_name="text-xs font-bold tracking-widest text-amber-400"),
+                    rx.heading("The Alpha Convergence", class_name="text-2xl md:text-3xl font-bold text-white"),
+                    rx.text("최적의 종목을 발굴하다", class_name="text-gray-400"),
+                    spacing="1",
+                    align="start",
+                ),
+                align="center",
+            ),
+            # 철학 설명
+            rx.box(
+                rx.text(
+                    "선택된 산업 내에서 가장 강력한 해자(Moat)와 매력적인 가격(Valuation)을 가진 1등 기업을 찾아냅니다.",
+                    class_name="text-lg text-gray-300 leading-relaxed italic",
+                ),
+                class_name="max-w-2xl mt-8 pl-6 border-l-4 border-amber-500/50",
+            ),
+            # 교집합 다이어그램
+            rx.box(
+                rx.box(
+                    # 3개의 원 (교집합)
+                    rx.box(
+                        rx.text("Fundamental", class_name="text-xs font-bold text-cyan-400"),
+                        class_name="absolute w-40 h-40 rounded-full bg-cyan-500/10 border-2 border-cyan-500/30 flex items-center justify-center left-4 top-0 circle-converge",
+                    ),
+                    rx.box(
+                        rx.text("Technical", class_name="text-xs font-bold text-purple-400"),
+                        class_name="absolute w-40 h-40 rounded-full bg-purple-500/10 border-2 border-purple-500/30 flex items-center justify-center right-4 top-0 circle-converge",
+                    ),
+                    rx.box(
+                        rx.text("Moat", class_name="text-xs font-bold text-amber-400"),
+                        class_name="absolute w-40 h-40 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center left-1/2 -translate-x-1/2 top-20 circle-converge",
+                    ),
+                    class_name="relative w-72 h-64",
+                ),
+                class_name="mt-12 flex justify-center",
+            ),
+            # 최종 메시지
+            rx.box(
+                rx.vstack(
+                    rx.text("ALPHA", class_name="text-xs tracking-widest text-gray-500"),
+                    rx.text("The intersection of conviction and opportunity", class_name="text-lg text-gray-400 italic"),
+                    rx.text("확신과 기회가 만나는 지점", class_name="text-sm text-gray-500"),
+                    spacing="2",
+                    align="center",
+                ),
+                class_name="mt-12 text-center",
+            ),
+            align="start",
+            width="100%",
+        ),
+        id="stage-3",
+        class_name="min-h-screen flex items-center py-24",
+    )
+
+
+def footer_cta() -> rx.Component:
+    """Footer - Call to Action"""
+    return rx.box(
+        rx.vstack(
+            # 메인 CTA
+            rx.vstack(
+                rx.text(
+                    "See the Data behind the Philosophy.",
+                    class_name="text-2xl md:text-3xl font-bold text-white text-center",
+                ),
+                rx.text(
+                    "이 철학 뒤에 있는 실제 데이터를 확인하세요.",
+                    class_name="text-gray-400 text-center mb-8",
+                ),
+                rx.hstack(
+                    rx.link(
+                        rx.button(
+                            rx.icon("droplets", size=20),
+                            "View Liquidity Dashboard",
+                            class_name="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg shadow-cyan-500/25",
+                        ),
+                        href="/indicators",
+                    ),
+                    rx.link(
+                        rx.button(
+                            rx.icon("bar-chart-3", size=20),
+                            "View Stock Analysis",
+                            variant="outline",
+                            class_name="border-slate-600 text-gray-300 hover:bg-slate-800 px-8 py-4 rounded-xl font-semibold",
+                        ),
+                        href="/stocks",
+                    ),
+                    spacing="4",
+                    class_name="flex-col md:flex-row",
+                ),
+                align="center",
+            ),
+            # 구분선
+            rx.box(class_name="w-24 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent my-16"),
+            # 저작권
+            rx.hstack(
+                rx.hstack(
+                    rx.icon("trending-up", size=20, color="#10b981"),
+                    rx.text("MacroWide", class_name="font-semibold text-gray-400"),
+                    spacing="2",
+                ),
+                rx.text(
+                    "© 2025 MacroWide. All rights reserved.",
+                    class_name="text-gray-500 text-sm",
+                ),
+                justify="between",
+                align="center",
+                width="100%",
+            ),
+            width="100%",
+            align="center",
+        ),
+        class_name="py-24 border-t border-slate-800",
+    )
+
+
 def indicators_section() -> rx.Component:
-    """경제 지표 섹션"""
+    """경제 지표 섹션 (기존 호환)"""
     return rx.box(
         rx.vstack(
             rx.hstack(
@@ -779,13 +1287,26 @@ def stocks_layout() -> rx.Component:
 
 
 def index() -> rx.Component:
-    """메인 페이지"""
+    """메인 페이지 - The Investment Engine"""
     return rx.box(
-        # 5분 주기로 자동 새로고침(키 없는 무료 데이터 소스의 TTL과 동일)
+        # 스크롤 스무스 + 자동 새로고침
         rx.script(
             """
 (function () {
   if (typeof window === 'undefined') return;
+  
+  // 스크롤 시 부드러운 앵커 이동
+  document.addEventListener('click', function(e) {
+    var anchor = e.target.closest('a[href^="#"]');
+    if (!anchor) return;
+    e.preventDefault();
+    var target = document.querySelector(anchor.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+  
+  // 5분 자동 새로고침
   if (window.__macrowide_autorefresh) return;
   window.__macrowide_autorefresh = setInterval(function () {
     window.location.reload();
@@ -796,10 +1317,11 @@ def index() -> rx.Component:
         navbar(),
         rx.box(
             hero_section(),
-            indicators_section(),
-            features_section(),
-            footer(),
-            class_name="max-w-7xl mx-auto px-6",
+            stage_macro(),
+            stage_sector(),
+            stage_stock(),
+            footer_cta(),
+            class_name="max-w-5xl mx-auto px-6",
         ),
         class_name="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950",
     )
